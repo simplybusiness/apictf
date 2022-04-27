@@ -1,0 +1,6 @@
+sqlalchemy
+bs4
+flask
+flask_sqlalchemy
+flask_user
+flask_cors

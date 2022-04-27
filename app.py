@@ -172,7 +172,21 @@ def create_app():
     @app.route('/')
     def home_page():
         page = """
-        <html><head><title>api ctf</title></head><body><p>Hi there, this is a CTF!</p></body></html>"""
+        <html><head><title>api ctf</title></head><body><p>Hi there, this is a CTF!</p>
+        <p>Current list of endpoints:<br>
+        <ul><br><b>Endpoints that do not require authorization:</b><br>
+        <li>POST /v2/user/register  -create new user<br> 
+        Request data:  {"email":[string],"password":[string],"name":[string]}<br>
+        <li>POST /v2/login  -login<br>
+        Request data:  {"email":[string],"password":[string]}<br>
+        <br>
+        <b>Endpoints requiring authorization:</b><br>
+        <li>GET /v2/user/[int]  -retrieves information for user specified by int<br>
+        View user information<br>
+        <li>PUT /v2/user/[int]  -updates information for user specified by int<br>
+        Request data: {"email":[string],"password":[string],"isAdmin":[bool]}
+        </ul></p>
+        </body></html>"""
         return make_response(page,200)
     #User Registration
     @app.route('/v2/user/register', methods=['POST'])
