@@ -1,7 +1,7 @@
 import re
 import base64
 import datetime
-from sqlalchemy import text
+from sqlalchemy.sql import text
 from flask import Flask, jsonify, request, make_response, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_user import current_user, login_required, roles_required, UserManager, UserMixin, user_manager
@@ -11,11 +11,10 @@ import random
 from bs4 import BeautifulSoup as bs
 import secrets
 
-app = Flask(__name__)
 
 
 class ConfigClass(object):
-    SECRET_KEY = "supersecretkey"
+    SECRET_KEY = "tkeysupersecretkeysupersecretkey" 
     SQLALCHEMY_DATABASE_URI = 'sqlite:///apisec.sqlite'    # File-based SQL database
     SQLALCHEMY_TRACK_MODIFICATIONS = False    # Avoids SQLAlchemy warning
 
@@ -23,15 +22,15 @@ class ConfigClass(object):
     USER_ENABLE_EMAIL = False
 
 #generates a session token to be used when calling protected endpoints
-def auth_token():
-    return base64.b64encode(secrets.token_bytes(32)).decode()
+
 
 def gen_pass():
     characters = 'abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ+_)(*&^%$#@!~=-?/.>,<][}{'
     return ''.join(random.choice(characters) for i in range(30))
 
 def create_app():
-
+    app = Flask(__name__)
+    app.config.from_object(__name__+'.ConfigClass')
     def check_token(token):
         session_found = Sessions.query.filter_by(session = token).first()
         if session_found is not None:
@@ -40,7 +39,8 @@ def create_app():
             return False
 
     def isAdmin(sid):
-        return Users.query.filter_by(id = sid).first()
+        user = Users.query.filter_by(id = sid).first()
+        return user.isAdmin
 
     """ Flask application factory """
     
@@ -53,7 +53,7 @@ def create_app():
     #Might not be needed
     class Sessions(db.Model):
         __tablename__ = 'sessions'
-        sid = db.Column( db.String(255), primary_key=True)
+        sid = db.Column( db.Integer, primary_key=True)
         #timeouts are hard.  
         expired = db.Column(db.DateTime)
         session = db.Column(db.Text)
@@ -68,7 +68,7 @@ def create_app():
             if 'session' in kwargs:
                 self.session = kwargs[ 'session' ]
             if 'suser' in kwargs:
-                self.session = kwargs[ 'suser' ]
+                self.suser = kwargs[ 'suser' ]
     
         def __repr__( self ):
             return '<Session %s>' % self.session
@@ -79,8 +79,8 @@ def create_app():
         name = db.Column(db.String(255, collation='NOCASE'), nullable=False)
         email = db.Column(db.String(255, collation='NOCASE'), nullable=False, unique=True)
         password = db.Column(db.String(255), nullable=False, server_default='')
-        notes = db.Column(db.String(255),nullable=True, server_default='')
-        isAdmin = db.Column('is_admin', db.Boolean(), server_default=False)
+        notes = db.Column(db.String(255), nullable=True, server_default='')
+        isAdmin = db.Column(db.Boolean, default=False, nullable=False)
     
     class Widgets(db.Model):
         __tablename__ = 'widgets'
@@ -96,14 +96,14 @@ def create_app():
         uid = db.Column(db.Integer, nullable=False)
         rcontent = db.Column(db.String(255), nullable=False)
     
-    user_manager = UserManager(app,db, Users)
+    user_manager = UserManager(app, db, Users)
 
     db.create_all()
 
     # If we don't have entries in the database create them
 
     # Create new users
-    if not Users.query.filter(Users.email == 'admin@apictf.com').first():
+    if not Users.query.filter_by(email = 'admin@apictf.com').first():
         user = Users(
             email = 'admin@apictf.com',
             name = 'admin',
@@ -114,22 +114,22 @@ def create_app():
         db.session.add(user)
         db.session.commit()
 
-    if not Users.query.filter(Users.email == 'generic.user@apictf.com').first():
+    if not Users.query.filter_by(email = 'generic.user@apictf.com').first():
         user = Users(
             email='generic.user@apictf.com',
             name='Generic User',
-            password=gen_pass(),
+            password= gen_pass(),
             notes='This is just a generic user.  Blah blah blah',
             isAdmin = False
         )
         db.session.add(user)
         db.session.commit()
 
-    if not Users.query.filter(Users.email == 'john.dough@apictf.com').first():
+    if not Users.query.filter_by(email = 'john.dough@apictf.com').first():
         user = Users(
             email='john.dough@apictf.com',
             name='John Dough',
-            password=gen_pass(),
+            password= gen_pass(),
             notes='John likes his privacy. As we all should.',
             isAdmin = False
         )
@@ -137,7 +137,7 @@ def create_app():
         db.session.commit()
 
     # Populate the Docs table
-    if not Docs.query.filter(did=1035).first():
+    if not Docs.query.filter_by(did=1035).first():
         doc = Docs(
             did=1035,
             uid=3,
@@ -146,7 +146,7 @@ def create_app():
         db.session.add(doc)
         
     
-    if not Docs.query.filter(did=1037).first():
+    if not Docs.query.filter_by(did=1037).first():
         doc = Docs(
             did=1037,
             uid=2,
@@ -154,7 +154,7 @@ def create_app():
         )
         db.session.add(doc)
 
-    if not Docs.query.filter(did=1039).first():
+    if not Docs.query.filter_by(did=1039).first():
         doc = Docs(
             did=1040,
             uid=2,
@@ -164,12 +164,6 @@ def create_app():
 
     db.session.commit()
     
-
-    #Utility functions mostly boring shit here just don't want to have to write the same code over and over again
-
-    
-    
-
     ##########################################
     # Endpoint Definitions
     ##########################################
@@ -177,8 +171,9 @@ def create_app():
     #Nothing to see here
     @app.route('/')
     def home_page():
-        abort(404)
-    
+        page = """
+        <html><head><title>api ctf</title></head><body><p>Hi there, this is a CTF!</p></body></html>"""
+        return make_response(page,200)
     #User Registration
     @app.route('/v2/user/register', methods=['POST'])
     def register():
@@ -217,14 +212,15 @@ def create_app():
         if not request.json or 'email' not in request.json or 'password' not in request.json:
             abort(400, 'Missing things')
         username = request.json['email']
-        password = request.json['password']
         username = username.replace('%40','@')
+        pword = request.json['password']
         #hopefully this will allow for SQL injection
-        q = text("SELECT * FROM users WHERE email={0} AND password={1}".format(username,password))
-        result = db.Query(Users).from_statement(q).first()
+        q = text("SELECT * FROM users WHERE email='{0}' AND password='{1}'".format(username,pword))
+        result = db.engine.execute(q).first()
         if result is not None:
-            token = auth_token()
+            token = base64.b64encode(secrets.token_bytes(32)).decode()
             sess = Sessions(
+                expired = datetime.datetime.now() + datetime.timedelta(minutes = 30),
                 suser = result.id,
                 session = token
             )
@@ -234,6 +230,8 @@ def create_app():
                 return make_response(jsonify({'message':'Success','Authorization-Token':token,'User':result.name,'isAdmin':str(result.isAdmin),'Notes':result.notes}),200)
             except Exception as e:
                 return make_response(jsonify({'error':str(e)}),500)
+        else:
+            return make_response(jsonify({'error':'nothing returned'}))
 
     @app.route('/v2/user/<int:id>', methods=['GET','PUT'])
     def users(id):
@@ -245,9 +243,9 @@ def create_app():
         
         #if we don't have a valid session send 403
         if not sid:
-            abort(403)
+            return make_response(jsonify({'Error':'Token check failed: {0}'.format(sid)}))
         try:
-            user = Users.Query.filter_by(id = id).first()
+            user = Users.query.filter_by(id=id).first()
         except Exception as e:
             return make_response(jsonify({'error':str(e)}),500)
         
@@ -264,7 +262,7 @@ def create_app():
         if request.method == 'PUT':
             if not request.json:
                 abort(400)
-            user = Users.Query.filter_by(id=id).first()
+            user = Users.query.filter_by(id=id).first()
             for item in request.json:
                 setattr(user,item,request.json[item])
             try:
@@ -282,7 +280,6 @@ def create_app():
         
 if __name__ == '__main__':
     app = create_app()
-    CORS(app)
     app.run(host='127.0.0.1', port=5000, debug=True)
 
 
