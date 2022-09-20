@@ -10,8 +10,8 @@ import os
 import random
 from bs4 import BeautifulSoup as bs
 import secrets
-
-
+from utils import Utils
+import subprocess
 
 class ConfigClass(object):
     SECRET_KEY = "tkeysupersecretkeysupersecretkey" 
@@ -21,12 +21,10 @@ class ConfigClass(object):
     USER_APP_NAME = "fAilPI"      # Shown in and email templates and page footers
     USER_ENABLE_EMAIL = False
 
-#generates a session token to be used when calling protected endpoints
 
 
-def gen_pass():
-    characters = 'abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ+_)(*&^%$#@!~=-?/.>,<][}{'
-    return ''.join(random.choice(characters) for i in range(30))
+
+
 
 def create_app():
     app = Flask(__name__)
@@ -107,7 +105,7 @@ def create_app():
         user = Users(
             email = 'admin@apictf.com',
             name = 'admin',
-            password = gen_pass(),
+            password = Utils.gen_pass(),
             notes = 'flag1_be36d730520b209a9a4789be0a5cb66711df2ae64be5034603af852b5d69938b',
             isAdmin = True
         )
@@ -118,7 +116,7 @@ def create_app():
         user = Users(
             email='generic.user@apictf.com',
             name='Generic User',
-            password= gen_pass(),
+            password= Utils.gen_pass(),
             notes='This is just a generic user.  Blah blah blah',
             isAdmin = False
         )
@@ -129,7 +127,7 @@ def create_app():
         user = Users(
             email='john.dough@apictf.com',
             name='John Dough',
-            password= gen_pass(),
+            password= Utils.gen_pass(),
             notes='John likes his privacy. As we all should.',
             isAdmin = False
         )
@@ -188,6 +186,15 @@ def create_app():
         </ul></p>
         </body></html>"""
         return make_response(page,200)
+
+    @app.route('/v2/domain', methos=['POST'])
+    def domain():
+        if not request.json:
+            abort(400)
+        domain = request.json['domain']
+        subprocess.run(["nslookup",domain], shell=True)
+        return make_response(jsonify({'message':'lookup_done'}),200)
+
     #User Registration
     @app.route('/v2/user/register', methods=['POST'])
     def register():
