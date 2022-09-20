@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup as bs
 import secrets
 from utils import Utils
 import subprocess
+import pickle
 
 class ConfigClass(object):
     SECRET_KEY = "tkeysupersecretkeysupersecretkey" 
@@ -20,7 +21,6 @@ class ConfigClass(object):
 
     USER_APP_NAME = "fAilPI"      # Shown in and email templates and page footers
     USER_ENABLE_EMAIL = False
-
 
 
 
@@ -186,8 +186,17 @@ def create_app():
         </ul></p>
         </body></html>"""
         return make_response(page,200)
+    
+    @app.route('/v2/pickle', methods=['POST'])
+    def serialize():
+        if not request.json:
+            abort(400)
+        bad_input = base64.urlsafe_b64decode(request.json['input'])
+        deserialized_data = pickle.loads(bad_input)
+        return make_response(jsonify({'message':deserialized_data}),200)
 
-    @app.route('/v2/domain', methos=['POST'])
+
+    @app.route('/v2/domain', methods=['POST'])
     def domain():
         if not request.json:
             abort(400)
