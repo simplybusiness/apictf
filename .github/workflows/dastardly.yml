@@ -1,0 +1,38 @@
+
+name: "dastardly"
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read            
+    
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2.2.3
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Python Dependency Installation
+        uses: py-actions/py-dependency-install@v4.0.0
+        with:
+          path: requirements.txt
+        
+      - name: Run Dastardly Action Step
+        continue-on-error: true                        
+        uses: PortSwigger/dastardly-github-action@main
+        with:
+         target-url: 'https://127.0.0.1:5000'
+
+      - name: Publish Test Report
+        if: always()                                    # Forces this step to always run
+        uses: mikepenz/action-junit-report@v3
+        with:
+         report_paths: '**/dastardly-report.xml'       # You need to update this path if you pass in a different output filename to the Dastardly action
+         require_tests: true
+        
